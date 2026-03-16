@@ -123,7 +123,7 @@ function M.items()
       items[#items + 1] = {
         word = '#' .. tool.name,
         abbr = tool.name,
-        kind = config.functions[tool.name].group or 'resource',
+        kind = config.functions[tool.name].group[0] or 'resource',
         info = info,
         menu = uri,
         icase = 1,
