@@ -50,7 +50,7 @@ end
 ---@type table<string, CopilotChat.config.functions.Function>
 return {
   file = {
-    group = { 'copilot' },
+    group = { 'copilot', 'safepilot' },
     uri = 'file://{path}',
     description = 'Reads content from a specified file path, even if the file is not currently loaded as a buffer.',
 
@@ -89,7 +89,7 @@ return {
   },
 
   url = {
-    group = { 'copilot' },
+    group = { 'copilot', 'safepilot' },
     uri = 'https://{url}',
     description = 'Fetches content from a specified URL. Useful for referencing documentation, examples, or other online resources.',
 
@@ -126,7 +126,7 @@ return {
   },
 
   buffer = {
-    group = { 'copilot' },
+    group = { 'copilot', 'safepilot' },
     uri = 'neovim://buffer/{scope}',
     description = 'Retrieves content from buffer(s) with diagnostics. Scope can be a buffer number, filename, or one of: active, visible, listed, quickfix.',
 
@@ -224,7 +224,7 @@ return {
   },
 
   selection = {
-    group = { 'copilot' },
+    group = { 'copilot', 'safepilot' },
     uri = 'neovim://selection',
     description = 'Includes the content of the current visual selection with diagnostics. Useful for discussing specific code snippets or text blocks.',
 
@@ -259,7 +259,7 @@ return {
   },
 
   clipboard = {
-    group = { 'copilot' },
+    group = { 'copilot', 'safepilot' },
     uri = 'neovim://clipboard',
     description = 'Provides access to the system clipboard content. Useful for discussing copied text or code snippets.',
 
@@ -281,7 +281,7 @@ return {
   },
 
   glob = {
-    group = { 'copilot' },
+    group = { 'copilot', 'safepilot' },
     uri = 'files://glob/{pattern}',
     description = 'Lists filenames matching a pattern in your workspace. Useful for discovering relevant files or understanding the project structure.',
 
@@ -313,7 +313,7 @@ return {
   },
 
   grep = {
-    group = { 'copilot' },
+    group = { 'copilot', 'safepilot' },
     uri = 'files://grep/{pattern}',
     description = 'Searches for a pattern across files in your workspace. Helpful for finding specific code elements or patterns.',
 
@@ -344,7 +344,7 @@ return {
   },
 
   gitdiff = {
-    group = { 'copilot' },
+    group = { 'copilot', 'safepilot' },
     uri = 'git://diff/{target}',
     description = 'Retrieves git diff information. Requires git to be installed. Useful for discussing code changes or explaining the purpose of modifications.',
 
@@ -419,7 +419,7 @@ return {
   },
 
   edit = {
-    group = { 'copilot' },
+    group = { 'copilot', 'safepilot' },
     description = 'Applies a unified diff to a file. The diff should be in unified diff format (similar to diff -U0 output).',
 
     schema = {
