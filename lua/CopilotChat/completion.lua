@@ -67,9 +67,15 @@ function M.items()
 
   local groups = {}
   for name, tool in pairs(config.functions) do
-    if tool.group then
-      groups[tool.group] = groups[tool.group] or {}
-      groups[tool.group][name] = tool
+    local tool_groups = tool.group
+    if tool_groups then
+      if type(tool_groups) == 'string' then
+        tool_groups = { tool_groups }
+      end
+      for _, group_name in ipairs(tool_groups) do
+        groups[group_name] = groups[group_name] or {}
+        groups[group_name][name] = tool
+      end
     end
   end
   for name, group in pairs(groups) do
@@ -86,12 +92,21 @@ function M.items()
     }
   end
   for name, tool in pairs(config.functions) do
+    local tool_groups = tool.group
+    local menu = ''
+    if tool_groups then
+      if type(tool_groups) == 'table' then
+        menu = table.concat(tool_groups, ', ')
+      else
+        menu = tool_groups
+      end
+    end
     items[#items + 1] = {
       word = '@' .. name,
       abbr = name,
       kind = constants.ROLE.TOOL,
       info = tool.description,
-      menu = tool.group or '',
+      menu = menu,
       icase = 1,
       dup = 0,
       empty = 0,
