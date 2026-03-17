@@ -72,7 +72,7 @@ function M.resolve_tools(prompt, config)
   -- Check for @tool pattern to find enabled tools
   prompt = prompt:gsub('@' .. WORD, function(match)
     for name, tool in pairs(config.functions) do
-      if name == match or tool.group == match then
+      if name == match or vim.tbl_contains(tool.group, match) then
         table.insert(tool_matches, match)
         return ''
       end
@@ -81,7 +81,7 @@ function M.resolve_tools(prompt, config)
   end)
   for _, match in ipairs(tool_matches) do
     for name, tool in pairs(config.functions) do
-      if name == match or tool.group == match then
+      if name == match or vim.tbl_contains(tool.group, match) then
         table.insert(enabled_tools, tools[name])
       end
     end
