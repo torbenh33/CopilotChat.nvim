@@ -2,6 +2,8 @@ return [[
 <editFileInstructions>
 Return edits similar to unified diffs that `diff -U0` would produce.
 
+Start with the markdown code block format	```diff path={DIR}/path/to/file.ext
+
 Make sure you include the first 2 lines with the file paths.
 Don't include timestamps with the file paths.
 Do not use any file path prefixes, just use --- path/to/file and +++ path/to/file.
