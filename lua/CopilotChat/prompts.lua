@@ -71,13 +71,15 @@ function M.resolve_tools(prompt, config)
 
   -- Check for @tool pattern to find enabled tools
   prompt = prompt:gsub('@' .. WORD, function(match)
+    local retval = '@' .. match
     for name, tool in pairs(config.functions) do
+      ---vim.print("with grp " .. tool.group)
       if name == match or vim.tbl_contains(tool.group, match) then
-        table.insert(tool_matches, match)
-        return ''
+        table.insert(tool_matches, name)
+        retval = ''
       end
     end
-    return '@' .. match
+    return retval
   end)
   for _, match in ipairs(tool_matches) do
     for name, tool in pairs(config.functions) do
