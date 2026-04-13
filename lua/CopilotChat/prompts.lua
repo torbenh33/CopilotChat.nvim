@@ -337,10 +337,14 @@ function M.resolve_prompt(prompt, config)
       config.system_prompt = vim.trim(config.system_prompt)
         .. '\n'
         .. vim.trim(require('CopilotChat.instructions.edit_file_unified'))
-    else
+    elseif config.diff == 'block' then
       config.system_prompt = vim.trim(config.system_prompt)
         .. '\n'
         .. vim.trim(require('CopilotChat.instructions.edit_file_block'))
+		else
+      config.system_prompt = vim.trim(config.system_prompt)
+        .. '\n'
+        .. vim.trim(require('CopilotChat.instructions.edit_file_tool'))
     end
 
     config.system_prompt = config.system_prompt:gsub('{OS_NAME}', vim.uv.os_uname().sysname)
