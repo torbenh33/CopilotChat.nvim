@@ -89,14 +89,16 @@ end
 ---@param content string
 ---@param start_line number: The starting line number
 ---@return string
-local function generate_resource_block(content, mimetype, name, path, start_line, end_line)
+local function generate_resource_block(content, mimetype, name, path, start_line, end_line, numbers)
   local lines = vim.split(content, '\n')
   local total_lines = #lines
   local max_length = #tostring(total_lines)
-  for i, line in ipairs(lines) do
-    local formatted_line_number = string.format('%' .. max_length .. 'd', i - 1 + (start_line or 1))
-    lines[i] = formatted_line_number .. ': ' .. line
-  end
+	if numbers then
+		for i, line in ipairs(lines) do
+			local formatted_line_number = string.format('%' .. max_length .. 'd', i - 1 + (start_line or 1))
+			lines[i] = formatted_line_number .. ': ' .. line
+		end
+	end
 
   local updated_content = table.concat(lines, '\n')
   local filetype = files.mimetype_to_filetype(mimetype or 'text')
@@ -133,7 +135,8 @@ local function generate_resource_messages(resources)
           resource.uri,
           resource.name,
           start_line,
-          end_line
+          end_line,
+					false
         ),
         role = constants.ROLE.USER,
       }

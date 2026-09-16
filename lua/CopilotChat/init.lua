@@ -443,12 +443,30 @@ function M.ask(prompt, config)
         local assistant_message = M.chat:get_message(constants.ROLE.ASSISTANT)
         if assistant_message and assistant_message.tool_calls then
           local handled_ids = {}
+          local skipped_tool_calls = {}
           for _, tool in ipairs(resolved_tools) do
             handled_ids[tool.id] = true
           end
 
-          -- If we skipped any tool calls, send that as result
           for _, tool_call in ipairs(assistant_message.tool_calls) do
+            if not handled_ids[tool_call.id] then
+              table.insert(skipped_tool_calls, tool_call)
+            end
+          end
+
+          -- If a single tool call was rejected, forward the user's prompt as the tool result.
+          if #skipped_tool_calls == 1 and utils.empty(resolved_tools) and not utils.empty(prompt) then
+            local skipped_tool = skipped_tool_calls[1]
+            table.insert(resolved_tools, {
+              id = skipped_tool.id,
+              result = string.format('[%s] %s', skipped_tool.id, prompt),
+            })
+            handled_ids[skipped_tool.id] = true
+            prompt = ''
+          end
+
+          -- Otherwise keep existing behavior for skipped tool calls.
+          for _, tool_call in ipairs(skipped_tool_calls) do
             if not handled_ids[tool_call.id] then
               table.insert(resolved_tools, {
                 id = tool_call.id,
