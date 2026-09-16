@@ -278,6 +278,17 @@ return {
     end,
   },
 
+  quickfix_toolcall = {
+    normal = 'gqt',
+    callback = function()
+      local chat = require('CopilotChat').chat
+      local tool_call = chat:get_nearest_toolcall()
+			print(vim.inspect(tool_call))
+      if tool_call then
+        chat:open_toolcall_window(tool_call)
+      end
+    end,
+  },
   show_info = {
     normal = 'gc',
     callback = function(source)

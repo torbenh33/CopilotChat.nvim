@@ -242,6 +242,59 @@ function Chat:get_block(role, cursor)
   end
 end
 
+function Chat:get_nearest_toolcall()
+  local messages = self:get_messages()
+  local last_message = nil
+
+  -- Find the last message with role 'user'
+  for i = #messages, 1, -1 do
+    local message = messages[i]
+		print(message.role)
+    if message.role == constants.ROLE.ASSISTANT then
+      last_message = message
+      break
+    end
+  end
+
+  if not last_message or not last_message.tool_calls or #last_message.tool_calls == 0 then
+    return nil
+  end
+
+  -- Return the last tool call from the last user message
+  return last_message.tool_calls[#last_message.tool_calls]
+end
+
+function Chat:open_toolcall_window(tool_call)
+  if not tool_call then
+    return
+  end
+
+  local tool_id = tool_call.id
+  local arguments = tool_call.arguments
+
+  -- Format arguments as JSON for display
+  -- local json_args = vim.inspect(utils.json_decode(arguments), 2)
+  -- local json_args = vim.inspect(utils.json_decode(arguments))
+  local json_args = utils.json_decode(arguments)
+
+	local buf =	vim.api.nvim_create_buf(true, true)
+
+  -- Open a new window
+  local winnr = vim.api.nvim_open_win(buf, false, {
+    relative = "editor",
+    row = 1,
+    col = 1,
+    width = 60,
+    height = math.floor(vim.o.lines * 0.5),
+    title = "Tool Call: " .. tool_id
+  })
+
+	print(json_args)
+	print(json_args["diff"])
+	print(vim.split(json_args["diff"],'\n'))
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(json_args["diff"], '\n'))
+end
+
 --- Get list of all chat messages
 ---@return table<CopilotChat.ui.chat.Message>
 function Chat:get_messages()
@@ -830,7 +883,7 @@ function Chat:render()
         local virt_lines = { { { 'Tool calls:', 'CopilotChatAnnotationHeader' } } }
         for _, tc in ipairs(message.tool_calls) do
           table.insert(virt_lines, { { string.format('  %s:%s', tc.name, tostring(tc.id)), 'CopilotChatAnnotation' } })
-          for _, json_line in ipairs(vim.split(vim.inspect(utils.json_decode(tc.arguments)), '\n')) do
+          for _, json_line in ipairs(vim.split(vim.inspect(utils.json_decode(tc.arguments)), '\\n')) do
             table.insert(virt_lines, { { '    ' .. json_line, 'CopilotChatAnnotation' } })
           end
         end
