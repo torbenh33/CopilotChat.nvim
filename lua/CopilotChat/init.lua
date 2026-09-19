@@ -590,6 +590,10 @@ end
 --- Save the chat history to a file.
 ---@param name string?
 ---@param history_path string?
+local function history_timestamp_name()
+  return os.date('%Y%m%d-%H%M%S')
+end
+
 function M.save(name, history_path)
   if not name or name == '' then
     name = 'default'
@@ -616,6 +620,12 @@ function M.save(name, history_path)
   file:close()
 
   log.info('Saved history to ' .. history_path)
+end
+
+--- Save the chat history to a timestamped file.
+---@param history_path string?
+function M.save_timestamped(history_path)
+  M.save(history_timestamp_name(), history_path)
 end
 
 --- Load the chat history from a file.
