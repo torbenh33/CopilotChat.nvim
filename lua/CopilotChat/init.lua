@@ -594,6 +594,29 @@ local function history_timestamp_name()
   return os.date('%Y%m%d-%H%M%S')
 end
 
+local function restore_buffers_from_messages(messages)
+  local seen = {}
+  local restored = 0
+
+  for _, message in ipairs(messages or {}) do
+    if type(message.content) == 'string' then
+      for uri in message.content:gmatch('buffer://[^%s`]+') do
+        local path = uri:gsub('^buffer://', '')
+        path = vim.fn.fnamemodify(path, ':p')
+
+        if path ~= '' and not tonumber(path) and not seen[path] and vim.loop.fs_stat(path) then
+          seen[path] = true
+          local bufnr = vim.fn.bufadd(path)
+          vim.fn.bufload(bufnr)
+          restored = restored + 1
+        end
+      end
+    end
+  end
+
+  return restored
+end
+
 function M.save(name, history_path)
   if not name or name == '' then
     name = 'default'
@@ -663,6 +686,14 @@ function M.load(name, history_path)
   end
 
   finish(#history == 0)
+end
+
+--- Restore file-backed buffers referenced in the currently loaded chat history.
+---@return number restored_count
+function M.restore_buffers()
+  local restored = restore_buffers_from_messages(M.chat:get_messages())
+  log.info(string.format('Restored %d buffers from chat history', restored))
+  return restored
 end
 
 --- Set the log level
@@ -762,6 +793,14 @@ function M.setup(config)
       finish(true)
     end)
   end
+
+  vim.api.nvim_create_user_command('CopilotChatRestoreBuffers', function()
+    M.restore_buffers()
+  end, {
+    nargs = 0,
+    force = true,
+    desc = 'Restore file-backed buffers referenced in current chat history',
+  })
 
   for name, prompt in pairs(prompts.list_prompts()) do
     if prompt.prompt then
