@@ -594,6 +594,26 @@ local function history_timestamp_name()
   return os.date('%Y%m%d-%H%M%S')
 end
 
+local function complete_history_names(arg_lead)
+  if not M.config.history_path or M.config.history_path == '' then
+    return {}
+  end
+
+  local history_path = vim.fs.normalize(M.config.history_path)
+  local files = vim.fn.glob(history_path .. '/*.json', false, true)
+  local names = {}
+
+  for _, file in ipairs(files) do
+    local name = vim.fn.fnamemodify(file, ':t:r')
+    if arg_lead == '' or vim.startswith(name, arg_lead) then
+      table.insert(names, name)
+    end
+  end
+
+  table.sort(names)
+  return names
+end
+
 local function restore_buffers_from_messages(messages)
   local seen = {}
   local restored = 0
@@ -804,6 +824,16 @@ function M.setup(config)
 
   for name, prompt in pairs(prompts.list_prompts()) do
     if prompt.prompt then
+      local command_opts = {
+        nargs = '*',
+        force = true,
+        range = true,
+        desc = prompt.description or (constants.PLUGIN_NAME .. ' ' .. name),
+      }
+      if name == 'Load' then
+        command_opts.complete = complete_history_names
+      end
+
       vim.api.nvim_create_user_command('CopilotChat' .. name, function(args)
         local input = prompt.prompt
         if args.args and vim.trim(args.args) ~= '' then
@@ -812,12 +842,7 @@ function M.setup(config)
         if input then
           M.ask(input, prompt)
         end
-      end, {
-        nargs = '*',
-        force = true,
-        range = true,
-        desc = prompt.description or (constants.PLUGIN_NAME .. ' ' .. name),
-      })
+      end, command_opts)
 
       if prompt.mapping then
         vim.keymap.set({ 'n', 'v' }, prompt.mapping, function()
