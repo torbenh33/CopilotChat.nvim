@@ -127,6 +127,14 @@ vim.api.nvim_create_user_command('CopilotChatLoad', function(args)
   local chat = require('CopilotChat')
   chat.load(args.args)
 end, { nargs = '*', force = true, complete = complete_load })
+vim.api.nvim_create_user_command('CopilotChatRestoreBuffers', function()
+  local chat = require('CopilotChat')
+  chat.restore_buffers()
+end, {
+  nargs = 0,
+  force = true,
+  desc = 'Restore file-backed buffers referenced in current chat history',
+})
 
 -- Store the current directory to window when directory changes
 -- I dont think there is a better way to do this that functions
