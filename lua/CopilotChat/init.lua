@@ -616,7 +616,7 @@ end
 
 local function restore_buffers_from_messages(messages)
   local seen = {}
-  local restored = 0
+  local restored = {}
 
   for _, message in ipairs(messages or {}) do
     if type(message.content) == 'string' then
@@ -628,7 +628,8 @@ local function restore_buffers_from_messages(messages)
           seen[path] = true
           local bufnr = vim.fn.bufadd(path)
           vim.fn.bufload(bufnr)
-          restored = restored + 1
+          vim.fn.setbufvar(bufnr, '&buflisted', 1)
+          table.insert(restored, path)
         end
       end
     end
@@ -709,10 +710,10 @@ function M.load(name, history_path)
 end
 
 --- Restore file-backed buffers referenced in the currently loaded chat history.
----@return number restored_count
+---@return string[] restored_paths
 function M.restore_buffers()
   local restored = restore_buffers_from_messages(M.chat:get_messages())
-  log.info(string.format('Restored %d buffers from chat history', restored))
+  log.info(string.format('Restored %d buffers from chat history', #restored))
   return restored
 end
 
@@ -814,14 +815,6 @@ function M.setup(config)
     end)
   end
 
-  vim.api.nvim_create_user_command('CopilotChatRestoreBuffers', function()
-    M.restore_buffers()
-  end, {
-    nargs = 0,
-    force = true,
-    desc = 'Restore file-backed buffers referenced in current chat history',
-  })
-
   for name, prompt in pairs(prompts.list_prompts()) do
     if prompt.prompt then
       local command_opts = {
@@ -830,10 +823,6 @@ function M.setup(config)
         range = true,
         desc = prompt.description or (constants.PLUGIN_NAME .. ' ' .. name),
       }
-      if name == 'Load' then
-        command_opts.complete = complete_history_names
-      end
-
       vim.api.nvim_create_user_command('CopilotChat' .. name, function(args)
         local input = prompt.prompt
         if args.args and vim.trim(args.args) ~= '' then

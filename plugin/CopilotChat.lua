@@ -91,16 +91,28 @@ vim.api.nvim_create_user_command('CopilotChatReset', function()
   chat.reset()
 end, { force = true })
 
-local function complete_load()
+local function complete_load(arg_lead)
   local chat = require('CopilotChat')
-  local options = vim.tbl_map(function(file)
-    return vim.fn.fnamemodify(file, ':t:r')
-  end, vim.fn.glob(chat.config.history_path .. '/*', true, true))
+  local history_path = chat.config.history_path
+  if not history_path or history_path == '' then
+    return {}
+  end
 
-  if not vim.tbl_contains(options, 'default') then
+  local files = vim.fn.glob(vim.fs.normalize(history_path) .. '/*.json', false, true)
+  local options = {}
+
+  for _, file in ipairs(files) do
+    local name = vim.fn.fnamemodify(file, ':t:r')
+    if arg_lead == '' or vim.startswith(name, arg_lead) then
+      table.insert(options, name)
+    end
+  end
+
+  if (arg_lead == '' or vim.startswith('default', arg_lead)) and not vim.tbl_contains(options, 'default') then
     table.insert(options, 1, 'default')
   end
 
+  table.sort(options)
   return options
 end
 vim.api.nvim_create_user_command('CopilotChatSave', function(args)
