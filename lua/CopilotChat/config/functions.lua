@@ -40,6 +40,41 @@ local function get_diagnostics_text(bufnr, start_line, end_line)
   return #diag_lines > 1 and table.concat(diag_lines, '\n') or ''
 end
 
+--- Make an absolute path relative to cwd when possible.
+---@param path string
+---@param cwd string
+---@return string
+local function path_relative_to_cwd(path, cwd)
+  if not path or path == '' or not cwd or cwd == '' then
+    return path
+  end
+
+  local abs_path = vim.fs and vim.fs.normalize and vim.fs.normalize(path) or path
+  local abs_cwd = vim.fs and vim.fs.normalize and vim.fs.normalize(cwd) or cwd
+
+  local cwd_prefix = abs_cwd
+  if cwd_prefix:sub(-1) ~= '/' then
+    cwd_prefix = cwd_prefix .. '/'
+  end
+
+  if abs_path == abs_cwd then
+    return '.'
+  end
+
+  if vim.startswith(abs_path, cwd_prefix) then
+    return abs_path:sub(#cwd_prefix + 1)
+  end
+
+  if vim.fs and vim.fs.relpath then
+    local relpath = vim.fs.relpath(abs_path, abs_cwd)
+    if relpath and relpath ~= '' and relpath ~= '.' and not vim.startswith(relpath, '..') then
+      return relpath
+    end
+  end
+
+  return path
+end
+
 ---@class CopilotChat.config.functions.Function
 ---@field description string?
 ---@field schema table?
@@ -137,7 +172,7 @@ return {
         scope = {
           type = 'string',
           description = 'Buffer scope: active (current), visible (shown in windows), listed (all listed buffers), quickfix (buffers in quickfix list), or a specific buffer number/filename.',
-          enum = function()
+          enum = function(source)
             local opts = {
               { display = 'active (current buffer)', value = 'active' },
               { display = 'visible (all visible buffers)', value = 'visible' },
@@ -145,12 +180,15 @@ return {
               { display = 'quickfix (buffers in quickfix)', value = 'quickfix' },
             }
 
+            local cwd = (source and source.cwd and source.cwd()) or vim.uv.cwd()
+
             for _, buf in ipairs(vim.api.nvim_list_bufs()) do
               if utils.buf_valid(buf) and vim.fn.buflisted(buf) == 1 then
                 local name = vim.api.nvim_buf_get_name(buf)
                 if name and name ~= '' then
-                  local display_name = vim.fn.fnamemodify(name, ':~:.')
-                  table.insert(opts, { display = display_name, value = name })
+                  local relative_name = cwd and path_relative_to_cwd(name, cwd) or name
+                  local display_name = vim.fn.fnamemodify(relative_name, ':~:.')
+                  table.insert(opts, { display = display_name, value = relative_name })
                 end
               end
             end
@@ -195,8 +233,31 @@ return {
           buffers = { bufnr }
         end
       else
+        local cwd = (source and source.cwd and source.cwd()) or vim.uv.cwd()
+        local normalized_scope = (vim.fs and vim.fs.normalize and vim.fs.normalize(scope)) or scope
+        local relative_scope = cwd and path_relative_to_cwd(normalized_scope, cwd) or normalized_scope
+
         buffers = vim.tbl_filter(function(b)
-          return utils.buf_valid(b) and files.filename_same(vim.api.nvim_buf_get_name(b), scope)
+          if not utils.buf_valid(b) then
+            return false
+          end
+
+          local name = vim.api.nvim_buf_get_name(b)
+          if name == '' then
+            return false
+          end
+
+          local normalized_name = (vim.fs and vim.fs.normalize and vim.fs.normalize(name)) or name
+          if files.filename_same(normalized_name, normalized_scope) then
+            return true
+          end
+
+          if cwd and cwd ~= '' then
+            local relative_name = path_relative_to_cwd(normalized_name, cwd)
+            return files.filename_same(relative_name, relative_scope)
+          end
+
+          return false
         end, vim.api.nvim_list_bufs())
       end
 
@@ -210,13 +271,7 @@ return {
         local uri_name = name
 
         if name ~= '' and source and source.cwd then
-          local cwd = source.cwd()
-          if cwd and cwd ~= '' and vim.fs and vim.fs.relpath then
-            local relpath = vim.fs.relpath(name, cwd)
-            if relpath and relpath ~= '' and relpath ~= '.' and not vim.startswith(relpath, '..') then
-              uri_name = relpath
-            end
-          end
+          uri_name = path_relative_to_cwd(name, source.cwd())
         end
 
         local data, mimetype = resources.get_buffer(bufnr)
