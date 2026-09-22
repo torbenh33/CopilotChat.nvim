@@ -150,7 +150,7 @@ return {
                 local name = vim.api.nvim_buf_get_name(buf)
                 if name and name ~= '' then
                   local display_name = vim.fn.fnamemodify(name, ':~:.')
-                  table.insert(opts, { display = display_name, value = tostring(buf) })
+                  table.insert(opts, { display = display_name, value = name })
                 end
               end
             end
@@ -194,6 +194,10 @@ return {
         if utils.buf_valid(bufnr) then
           buffers = { bufnr }
         end
+      else
+        buffers = vim.tbl_filter(function(b)
+          return utils.buf_valid(b) and files.filename_same(vim.api.nvim_buf_get_name(b), scope)
+        end, vim.api.nvim_list_bufs())
       end
 
       if #buffers == 0 then
@@ -203,6 +207,18 @@ return {
       local results = {}
       for _, bufnr in ipairs(buffers) do
         local name = vim.api.nvim_buf_get_name(bufnr)
+        local uri_name = name
+
+        if name ~= '' and source and source.cwd then
+          local cwd = source.cwd()
+          if cwd and cwd ~= '' and vim.fs and vim.fs.relpath then
+            local relpath = vim.fs.relpath(name, cwd)
+            if relpath and relpath ~= '' and relpath ~= '.' and not vim.startswith(relpath, '..') then
+              uri_name = relpath
+            end
+          end
+        end
+
         local data, mimetype = resources.get_buffer(bufnr)
         if data then
           local diag_text = get_diagnostics_text(bufnr)
@@ -211,8 +227,8 @@ return {
           end
 
           table.insert(results, {
-            uri = 'buffer://' .. bufnr,
-            name = name,
+            uri = name ~= '' and ('buffer://' .. uri_name) or ('buffer://' .. bufnr),
+            name = uri_name,
             mimetype = mimetype,
             data = data,
           })
