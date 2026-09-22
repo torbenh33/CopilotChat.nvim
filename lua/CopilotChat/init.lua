@@ -823,10 +823,6 @@ function M.setup(config)
         range = true,
         desc = prompt.description or (constants.PLUGIN_NAME .. ' ' .. name),
       }
-      if name == 'Load' then
-        command_opts.complete = complete_history_names
-      end
-
       vim.api.nvim_create_user_command('CopilotChat' .. name, function(args)
         local input = prompt.prompt
         if args.args and vim.trim(args.args) ~= '' then
