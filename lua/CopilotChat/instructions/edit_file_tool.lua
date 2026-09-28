@@ -1,5 +1,5 @@
 return [[
 <editFileInstructions>
-Use the `mcp_neovim_edit_file` tool to perform edits on files.
+Use the `{EDIT_FILE_TOOL}` tool to perform edits on files.
 </editFileInstructions>
 ]]
