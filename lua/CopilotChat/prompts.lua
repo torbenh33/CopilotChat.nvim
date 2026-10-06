@@ -328,7 +328,11 @@ function M.resolve_prompt(prompt, config)
         .. custom_instructions:gsub('{FILENAME}', instruction.filename):gsub('{CONTENT}', instruction.content)
     end
 
-    config.system_prompt = vim.trim(config.system_prompt) .. '\n' .. config.prompts.COPILOT_BASE.system_prompt
+    if not config.base_prompt then
+      config.system_prompt = vim.trim(config.system_prompt) .. '\n' .. config.prompts.COPILOT_BASE.system_prompt
+		else
+			config.system_prompt = vim.trim(config.system_prompt) .. '\n' .. config.base_prompt
+		end
     config.system_prompt = vim.trim(config.system_prompt)
       .. '\n'
       .. vim.trim(require('CopilotChat.instructions.tool_use'))
