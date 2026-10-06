@@ -317,6 +317,7 @@ return {
       return {
         {
           uri = 'neovim://selection',
+          dynamic = true,
           name = selection.filename,
           mimetype = files.mimetype_to_filetype(selection.filetype),
           data = data,
@@ -344,6 +345,7 @@ return {
       return {
         {
           uri = 'neovim://clipboard',
+          dynamic = true,
           mimetype = 'text/plain',
           data = lines,
         },
@@ -376,6 +378,7 @@ return {
       return {
         {
           uri = 'files://glob/' .. input.pattern,
+          dynamic = true,
           mimetype = 'text/plain',
           data = table.concat(out, '\n'),
         },
@@ -407,6 +410,7 @@ return {
       return {
         {
           uri = 'files://grep/' .. input.pattern,
+          dynamic = true,
           mimetype = 'text/plain',
           data = table.concat(out, '\n'),
         },
@@ -455,6 +459,7 @@ return {
       return {
         {
           uri = 'git://diff/' .. input.target,
+          dynamic = true,
           mimetype = 'text/plain',
           data = out.stdout,
         },
