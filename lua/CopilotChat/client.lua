@@ -11,6 +11,7 @@
 ---@class CopilotChat.client.Message
 ---@field role string
 ---@field content string
+---@field dynamic boolean? Internal resource placement flag
 ---@field reasoning string?
 ---@field tool_call_id string?
 ---@field tool_calls table<CopilotChat.client.ToolCall>?
@@ -41,6 +42,7 @@
 ---@field mimetype string?
 ---@field uri string?
 ---@field annotations CopilotChat.client.ResourceAnnotations?
+---@field dynamic boolean? Whether the resource should be placed after conversation history
 
 ---@class CopilotChat.client.Model
 ---@field provider string?
@@ -118,17 +120,16 @@ end
 
 --- Generate messages for the given resources
 --- @param resources CopilotChat.client.Resource[]
---- @return table<CopilotChat.client.Message>
+---@return table<CopilotChat.client.Message>, table<CopilotChat.client.Message>
 local function generate_resource_messages(resources)
-  return vim
-    .iter(resources or {})
-    :filter(function(resource)
-      return resource.data and resource.data ~= ''
-    end)
-    :map(function(resource)
+  local before_history = {}
+  local after_history = {}
+
+  for _, resource in ipairs(resources or {}) do
+    if resource.data and resource.data ~= '' then
       local start_line = resource.annotations and resource.annotations.start_line or 1
       local end_line = resource.annotations and resource.annotations.end_line or nil
-      return {
+      local message = {
         content = generate_resource_block(
           resource.data,
           resource.mimetype,
@@ -136,19 +137,29 @@ local function generate_resource_messages(resources)
           resource.name,
           start_line,
           end_line,
-					false
+          false
         ),
         role = constants.ROLE.USER,
+        dynamic = resource.dynamic,
       }
-    end)
-    :totable()
+
+      if resource.dynamic then
+        table.insert(after_history, message)
+      else
+        table.insert(before_history, message)
+      end
+    end
+  end
+
+  return before_history, after_history
 end
 
 --- Generate ask request
 --- @param system_prompt string
 --- @param history table<CopilotChat.client.Message>
---- @param generated_messages table<CopilotChat.client.Message>
-local function generate_ask_request(system_prompt, history, generated_messages)
+---@param before_history table<CopilotChat.client.Message>
+---@param after_history table<CopilotChat.client.Message>
+local function generate_ask_request(system_prompt, history, before_history, after_history)
   local messages = {}
 
   system_prompt = vim.trim(system_prompt)
@@ -161,9 +172,11 @@ local function generate_ask_request(system_prompt, history, generated_messages)
     })
   end
 
-  -- Include generated messages and history
-  vim.list_extend(messages, generated_messages)
+  -- Stable resources belong before the conversation history, while dynamic
+  -- resources belong after it to represent their current state.
+  vim.list_extend(messages, before_history)
   vim.list_extend(messages, history)
+  vim.list_extend(messages, after_history)
   return messages
 end
 
@@ -355,7 +368,8 @@ function Client:ask(opts)
   local history = vim.deepcopy(opts.history)
   local tool_calls = orderedmap()
   local generated_messages = {}
-  local resource_messages = generate_resource_messages(opts.resources)
+  local before_history, after_history = generate_resource_messages(opts.resources)
+  local resource_messages = vim.list_extend(vim.deepcopy(before_history), vim.deepcopy(after_history))
 
   if max_tokens then
     -- Count required tokens that we cannot reduce
@@ -530,8 +544,20 @@ function Client:ask(opts)
 
   local headers = self:authenticate(provider_name)
 
-  local request, extra_headers =
-    provider.prepare_input(generate_ask_request(opts.system_prompt, history, generated_messages), options)
+  local request_before_history = {}
+  local request_after_history = {}
+  for _, message in ipairs(generated_messages) do
+    if message.dynamic then
+      table.insert(request_after_history, message)
+    else
+      table.insert(request_before_history, message)
+    end
+  end
+
+  local request, extra_headers = provider.prepare_input(
+    generate_ask_request(opts.system_prompt, history, request_before_history, request_after_history),
+    options
+  )
 
   if extra_headers then
     headers = vim.tbl_extend('force', headers, extra_headers)
