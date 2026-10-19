@@ -621,7 +621,7 @@ local function restore_buffers_from_messages(messages)
   for _, message in ipairs(messages or {}) do
     if type(message.content) == 'string' then
       for uri in message.content:gmatch('buffer://[^%s`]+') do
-        local path = uri:gsub('^buffer://', '')
+        local path = uri:gsub('^buffer://', ''):gsub('%?version=%d+$', '')
         path = vim.fn.fnamemodify(path, ':.')
 
         if path ~= '' and not tonumber(path) and not seen[path] and vim.loop.fs_stat(path) then
