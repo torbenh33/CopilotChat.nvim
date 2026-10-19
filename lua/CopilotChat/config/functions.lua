@@ -274,6 +274,7 @@ return {
           uri_name = path_relative_to_cwd(name, source.cwd())
         end
 
+        local version = vim.api.nvim_buf_get_changedtick(bufnr)
         local data, mimetype = resources.get_buffer(bufnr)
         if data then
           local diag_text = get_diagnostics_text(bufnr)
@@ -282,10 +283,11 @@ return {
           end
 
           table.insert(results, {
-            uri = name ~= '' and ('buffer://' .. uri_name) or ('buffer://' .. bufnr),
+            uri = (name ~= '' and ('buffer://' .. uri_name) or ('buffer://' .. bufnr)) .. '?version=' .. version,
             name = uri_name,
             mimetype = mimetype,
             data = data,
+						dynamic = false,
           })
         end
       end
