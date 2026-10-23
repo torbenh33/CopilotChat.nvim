@@ -255,8 +255,30 @@ function M.resolve_functions(prompt, config)
     return result
   end
 
-  -- Resolve and process all tools
+  -- Execute recorded tool calls before resolving resource references, so reads
+  -- observe changes made by mutating calls such as file edits.
+  local ordered_matches = {}
+  local function matches_tool_call(match)
+    for _, tool_call in ipairs(tool_calls) do
+      if tool_call.name == match.word and vim.trim(tool_call.id) == vim.trim(match.input or '') then
+        return true
+      end
+    end
+    return false
+  end
+
   for _, match in ipairs(resource_matches) do
+    if matches_tool_call(match) then
+      table.insert(ordered_matches, match)
+    end
+  end
+  for _, match in ipairs(resource_matches) do
+    if not matches_tool_call(match) then
+      table.insert(ordered_matches, match)
+    end
+  end
+
+  for _, match in ipairs(ordered_matches) do
     if not utils.empty(match.pattern) then
       local out = expand_function(match.word, match.input)
       if out == nil then
