@@ -883,7 +883,7 @@ function Chat:render()
         local virt_lines = { { { 'Tool calls:', 'CopilotChatAnnotationHeader' } } }
         for _, tc in ipairs(message.tool_calls) do
           table.insert(virt_lines, { { string.format('  %s:%s', tc.name, tostring(tc.id)), 'CopilotChatAnnotation' } })
-          for _, json_line in ipairs(vim.split(vim.inspect(utils.json_decode(tc.arguments)), '\\n')) do
+          for _, json_line in ipairs(vim.split(vim.inspect(utils.json_decode(tc.arguments)), '\n')) do
             table.insert(virt_lines, { { '    ' .. json_line, 'CopilotChatAnnotation' } })
           end
         end
