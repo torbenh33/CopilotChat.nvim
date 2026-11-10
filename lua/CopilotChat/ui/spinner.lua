@@ -34,11 +34,6 @@ local Spinner = class(function(self, bufnr)
 end)
 
 function Spinner:start()
-  -- Diagnostic switch to isolate the 100ms status/extmark update loop.
-  if vim.g.copilotchat_disable_spinner then
-    return
-  end
-
   if self.timer then
     return
   end

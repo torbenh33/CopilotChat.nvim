@@ -570,11 +570,24 @@ function Chat:add_message(message, replace)
     self.messages:set(message.id, message)
 
     if current_message then
-      self:append('\n')
+      -- Leave a blank line after assistant messages so their final content line
+      -- remains inside the fold when the next section header begins.
+      self:append(current_message.role == constants.ROLE.ASSISTANT and '\n\n' or '\n')
     end
     self:append('# ' .. header .. ' (' .. message.id .. ') ' .. self.separator .. '\n\n')
     self:append(message.content)
   elseif replace and current_message then
+    -- Refresh section positions before replacing during streaming. The bypass
+    -- intentionally leaves them stale after append(), so prompt edits and the
+    -- final response replacement could otherwise target the wrong buffer lines.
+    if vim.g.copilotchat_disable_markdown_parse and self.streaming then
+      self.streaming = false
+      self:parse()
+      self:render()
+      self.streaming = true
+      current_message = self:get_message()
+    end
+
     -- Replace the content of the current message
     for k, v in pairs(message) do
       current_message[k] = v
