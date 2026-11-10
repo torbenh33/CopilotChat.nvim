@@ -201,47 +201,67 @@ function M.resolve_functions(prompt, config)
     end
 
     local schema = tools[name] and tools[name].schema or nil
-    local ok, output
-    if config.stop_on_function_failure then
-      output = tool.resolve(functions.parse_input(input, schema), source)
-      ok = true
-    else
-      ok, output = pcall(tool.resolve, functions.parse_input(input, schema), source)
+    local arguments = { input }
+    if type(input) == 'table' and #input > 0 then
+      local is_argument_list = true
+      for _, argument in ipairs(input) do
+        if type(argument) ~= 'table' then
+          is_argument_list = false
+          break
+        end
+      end
+      if is_argument_list then
+        arguments = input
+      end
     end
 
-    local result = ''
-    if not ok then
-      result = utils.make_string(output)
-    else
-      for _, content in ipairs(output) do
-        if content then
-          local content_out = nil
-          if content.uri then
-            if
-              not vim.tbl_contains(resolved_resources, function(resource)
-                return resource.uri == content.uri
-              end, { predicate = true })
-            then
-              content_out = '##' .. content.uri
-              table.insert(resolved_resources, content)
+    local result_parts = {}
+    local function append_result(value)
+      if not utils.empty(value) then
+        table.insert(result_parts, value)
+      end
+    end
+
+    for _, argument in ipairs(arguments) do
+      local ok, output
+      local parsed_input = functions.parse_input(argument, schema)
+      if config.stop_on_function_failure then
+        output = tool.resolve(parsed_input, source)
+        ok = true
+      else
+        ok, output = pcall(tool.resolve, parsed_input, source)
+      end
+
+      if not ok then
+        append_result(utils.make_string(output))
+      else
+        for _, content in ipairs(output) do
+          if content then
+            local content_out = nil
+            if content.uri then
+              if
+                not vim.tbl_contains(resolved_resources, function(resource)
+                  return resource.uri == content.uri
+                end, { predicate = true })
+              then
+                content_out = '##' .. content.uri
+                table.insert(resolved_resources, content)
+              end
+
+              if tool_id then
+                table.insert(resolved_stickies, '##' .. content.uri)
+              end
+            else
+              content_out = content.data
             end
 
-            if tool_id then
-              table.insert(resolved_stickies, '##' .. content.uri)
-            end
-          else
-            content_out = content.data
-          end
-
-          if content_out then
-            if not utils.empty(result) then
-              result = result .. '\n'
-            end
-            result = result .. content_out
+            append_result(content_out)
           end
         end
       end
     end
+
+    local result = table.concat(result_parts, '\n')
 
     if tool_id then
       table.insert(resolved_tools, {
