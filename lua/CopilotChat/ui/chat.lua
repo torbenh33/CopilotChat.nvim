@@ -572,7 +572,7 @@ function Chat:add_message(message, replace)
     if current_message then
       -- Leave a blank line after assistant messages so their final content line
       -- remains inside the fold when the next section header begins.
-      self:append(current_message.role == constants.ROLE.ASSISTANT and '\n\n' or '\n')
+      self:append(current_message.role == constants.ROLE.ASSISTANT and '\n' or '\n')
     end
     self:append('# ' .. header .. ' (' .. message.id .. ') ' .. self.separator .. '\n\n')
     self:append(message.content)
@@ -854,14 +854,14 @@ end
 function Chat:render()
   self:validate()
 
+  local highlight_ns = vim.api.nvim_create_namespace('copilot-chat-headers')
+  vim.api.nvim_buf_clear_namespace(self.bufnr, highlight_ns, 0, -1) -- Clear previous highlights
+  self:show_help() -- Clear previous help
+
   -- Parsed section data is unavailable while the diagnostic streaming bypass is active.
   if vim.g.copilotchat_disable_markdown_parse and self.streaming then
     return
   end
-
-  local highlight_ns = vim.api.nvim_create_namespace('copilot-chat-headers')
-  vim.api.nvim_buf_clear_namespace(self.bufnr, highlight_ns, 0, -1) -- Clear previous highlights
-  self:show_help() -- Clear previous help
 
   local messages = self:get_messages()
 
