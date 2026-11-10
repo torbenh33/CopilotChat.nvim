@@ -104,22 +104,76 @@ function M.make_string(...)
   return table.concat(t, ' ')
 end
 
---- Decode json
----@param body string The json string
+--- Decode JSON, including a sequence of adjacent JSON objects.
+---@param body string The JSON string
 ---@return table, string?
 function M.json_decode(body)
-  local ok, data = pcall(vim.json.decode, body, {
+  local opts = {
     luanil = {
       object = true,
       array = true,
     },
-  })
+  }
+  local ok, data = pcall(vim.json.decode, body, opts)
 
   if ok then
     return data
   end
 
-  return {}, data
+  -- Tool-call arguments can contain multiple JSON objects concatenated without
+  -- separators, e.g. {"arg":1}{"arg":2}. Split only at top-level object
+  -- boundaries, respecting nested objects, strings, and escaped quotes.
+  local objects = {}
+  local start = nil
+  local depth = 0
+  local in_string = false
+  local escaped = false
+
+  for i = 1, #body do
+    local char = body:sub(i, i)
+
+    if not start then
+      if not char:match('%s') then
+        if char ~= '{' then
+          return {}, data
+        end
+        start = i
+        depth = 1
+      end
+    elseif in_string then
+      if escaped then
+        escaped = false
+      elseif char == '\\' then
+        escaped = true
+      elseif char == '"' then
+        in_string = false
+      end
+    elseif char == '"' then
+      in_string = true
+    elseif char == '{' then
+      depth = depth + 1
+    elseif char == '}' then
+      depth = depth - 1
+      if depth == 0 then
+        local object_ok, object = pcall(vim.json.decode, body:sub(start, i), opts)
+        if not object_ok then
+          return {}, data
+        end
+        objects[#objects + 1] = object
+        start = nil
+      end
+    end
+  end
+
+  if start or #objects == 0 then
+    return {}, data
+  end
+
+  if #objects == 1 then
+    return objects[1]
+  end
+
+  return objects
 end
 
 --- Call a system command
