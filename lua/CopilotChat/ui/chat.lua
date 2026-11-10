@@ -124,6 +124,7 @@ end
 ---@field private spinner CopilotChat.ui.spinner.Spinner
 ---@field private chat_overlay CopilotChat.ui.overlay.Overlay
 ---@field private last_changedtick number?
+---@field private streaming boolean
 ---@field private source CopilotChat.ui.chat.Source
 ---@field private sticky table<string>
 local Chat = class(function(self, config, on_buf_create)
@@ -134,6 +135,7 @@ local Chat = class(function(self, config, on_buf_create)
   self.token_count = nil
   self.token_max_count = nil
   self.messages = orderedmap()
+  self.streaming = false
 
   self.source = {
     bufnr = nil,
@@ -515,6 +517,13 @@ end
 function Chat:start()
   self:validate()
 
+  -- Parse the submitted prompt before entering the diagnostic streaming mode.
+  if vim.g.copilotchat_disable_markdown_parse then
+    self:parse()
+    self:render()
+  end
+  self.streaming = true
+
   if self:focused() then
     utils.return_to_normal_mode()
   end
@@ -526,7 +535,12 @@ end
 --- Finish writing to the chat window.
 function Chat:finish()
   self.spinner:finish()
+  self.streaming = false
   vim.bo[self.bufnr].modifiable = true
+  if vim.g.copilotchat_disable_markdown_parse then
+    self:parse()
+    self:render()
+  end
   if self.config.auto_insert_mode and self:focused() then
     vim.cmd('startinsert')
   end
@@ -693,9 +707,9 @@ end
 function Chat:parse()
   self:validate()
 
-  -- Diagnostic switch: bypass Markdown parsing/tree-sitter walks while streaming.
-  -- Parsed sections are unavailable in this mode, so render() is also skipped.
-  if vim.g.copilotchat_disable_markdown_parse then
+  -- Diagnostic switch: bypass Markdown parsing/tree-sitter walks only while streaming.
+  -- Keep parsed sections current outside the streaming phase (e.g. submitted prompts).
+  if vim.g.copilotchat_disable_markdown_parse and self.streaming then
     return false
   end
 
@@ -827,8 +841,8 @@ end
 function Chat:render()
   self:validate()
 
-  -- Parsing is disabled for the diagnostic mode; its section data is required here.
-  if vim.g.copilotchat_disable_markdown_parse then
+  -- Parsed section data is unavailable while the diagnostic streaming bypass is active.
+  if vim.g.copilotchat_disable_markdown_parse and self.streaming then
     return
   end
 
