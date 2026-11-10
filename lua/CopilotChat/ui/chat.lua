@@ -536,7 +536,15 @@ end
 ---@param message CopilotChat.ui.chat.Message
 ---@param replace boolean? If true, replaces the last message if it has same role
 function Chat:add_message(message, replace)
-  local current_message = self:get_message()
+  local current_message
+  if vim.g.copilotchat_disable_markdown_parse then
+    -- Streaming chunks append to the cached message; don't force get_messages()
+    -- (and therefore a full Markdown parse) before each append.
+    local messages = self.messages:values()
+    current_message = messages[#messages]
+  else
+    current_message = self:get_message()
+  end
   local is_new = not current_message
     or current_message.role ~= message.role
     or (message.id and current_message.id ~= message.id)
@@ -653,7 +661,7 @@ function Chat:create()
   self.spinner.bufnr = bufnr
 
   vim.schedule(function()
-    if not vim.treesitter.get_parser(bufnr, 'markdown', {}) then
+    if not vim.g.copilotchat_disable_markdown_parse and not vim.treesitter.get_parser(bufnr, 'markdown', {}) then
       pcall(vim.treesitter.start, bufnr)
     end
   end)
@@ -684,6 +692,12 @@ end
 ---@protected
 function Chat:parse()
   self:validate()
+
+  -- Diagnostic switch: bypass Markdown parsing/tree-sitter walks while streaming.
+  -- Parsed sections are unavailable in this mode, so render() is also skipped.
+  if vim.g.copilotchat_disable_markdown_parse then
+    return false
+  end
 
   -- Skip parsing if buffer hasn't changed
   local changedtick = vim.api.nvim_buf_get_changedtick(self.bufnr)
@@ -812,6 +826,11 @@ end
 ---@protected
 function Chat:render()
   self:validate()
+
+  -- Parsing is disabled for the diagnostic mode; its section data is required here.
+  if vim.g.copilotchat_disable_markdown_parse then
+    return
+  end
 
   local highlight_ns = vim.api.nvim_create_namespace('copilot-chat-headers')
   vim.api.nvim_buf_clear_namespace(self.bufnr, highlight_ns, 0, -1) -- Clear previous highlights
